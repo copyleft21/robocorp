@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 1.0.5 - 2024-09-25
+
+- Bump requests to 2.32.3
+
+## 1.0.4 - 2024-04-08
+
+- Update package's main README.
+
+## 1.0.3 - 2024-01-14
+
+- Fix main README and update docs.
+
 ## 1.0.2 - 2023-11-06
 
 - Fix `list_assets` response parsing.

@@ -3,7 +3,18 @@ from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Callable, Iterator, Optional, Sequence, Set, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    Optional,
+    Sequence,
+    Set,
+    TypedDict,
+    TypeVar,
+    Union,
+)
 
 ExcInfo = tuple[type[BaseException], BaseException, TracebackType]
 OptExcInfo = Union[ExcInfo, tuple[None, None, None]]
@@ -17,13 +28,15 @@ def check_implements(x: T) -> T:
     """
     Helper to check if a class implements some protocol.
 
-    :important: It must be the last method in a class due to
-                https://github.com/python/mypy/issues/9266
+    Important: It must be the last method in a class due to
+        https://github.com/python/mypy/issues/9266
 
-        Example:
+    Example:
 
+    ```
     def __typecheckself__(self) -> None:
         _: IExpectedProtocol = check_implements(self)
+    ```
 
     Mypy should complain if `self` is not implementing the IExpectedProtocol.
     """
@@ -47,16 +60,84 @@ class ITask(typing.Protocol):
     message: str
     exc_info: Optional[OptExcInfo]
 
+    # If the task completed successfully, this will be
+    # the value returned by the task.
+    result: Any
+
+    options: Optional[Dict]
+
+    @property
+    def input_schema(self) -> Dict[str, Any]:
+        """
+        The input schema from the function signature.
+
+        Example:
+
+        ```
+        {
+            "properties": {
+                "value": {
+                    "type": "integer",
+                    "description": "Some value.",
+                    "title": "Value",
+                    "default": 0
+                }
+            },
+            "type": "object"
+        }
+        ```
+        """
+
+    @property
+    def output_schema(self) -> Dict[str, Any]:
+        """
+        The output schema based on the function signature.
+
+        Example:
+
+        ```
+        {
+            "type": "string",
+            "description": ""
+        }
+        ```
+        """
+
+    @property
+    def managed_params_schema(self) -> Dict[str, Any]:
+        """
+        The schema for the managed parameters.
+
+        Example:
+
+        ```
+        {
+            "my_password": {
+                "type": "Secret"
+            },
+            "request": {
+                "type": "Request"
+            }
+        }
+        ```
+        """
+
     @property
     def name(self) -> str:
-        pass
+        """
+        The name of the task.
+        """
 
     @property
     def lineno(self) -> int:
-        pass
+        """
+        The line where the task is declared.
+        """
 
-    def run(self) -> None:
-        pass
+    def run(self) -> Any:
+        """
+        Runs the task and returns its result.
+        """
 
     @property
     def failed(self) -> bool:
@@ -101,7 +182,7 @@ class IAutoUnregisterContextManager(typing.Protocol):
 
 
 class IOnTaskFuncFoundCallback(ICallback, typing.Protocol):
-    def __call__(self, func: Callable):
+    def __call__(self, func: Callable, *args, **kwargs):
         pass
 
     def register(self, callback: Callable) -> IAutoUnregisterContextManager:
@@ -170,3 +251,19 @@ class IAfterTaskRunCallback(ICallback, typing.Protocol):
 
     def unregister(self, callback: ITaskCallback) -> None:
         pass
+
+
+class TasksListTaskTypedDict(TypedDict):
+    """
+    When python -m robocorp.tasks list is run, the output is a
+    list[TasksListTaskTypedDict].
+    """
+
+    name: str
+    line: int
+    file: str
+    docs: str
+    input_schema: Dict[str, Any]
+    output_schema: Dict[str, Any]
+    managed_params_schema: Dict[str, Any]
+    options: Optional[Dict]

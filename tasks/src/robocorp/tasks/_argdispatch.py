@@ -1,5 +1,8 @@
 from logging import getLogger
-from typing import List
+from typing import List, Optional
+
+from . import _constants
+from ._customization._plugin_manager import PluginManager
 
 log = getLogger(__name__)
 
@@ -7,16 +10,18 @@ log = getLogger(__name__)
 class _ArgDispatcher:
     def __init__(self):
         self._name_to_func = {}
-        self.argparser = self._create_argparser()
 
-    def _dispatch(self, parsed) -> int:
+    def _dispatch(self, parsed, pm: Optional[PluginManager] = None) -> int:
         if not parsed.command:
-            self.argparser.print_help()
+            self._create_argparser().print_help()
             return 1
 
         method = self._name_to_func[parsed.command]
         dct = parsed.__dict__.copy()
         dct.pop("command")
+        if pm is not None:
+            dct["pm"] = pm
+
         return method(**dct)
 
     def register(self, name=None):
@@ -29,21 +34,28 @@ class _ArgDispatcher:
 
         return do_register
 
-    def _create_argparser(self):
-        import argparse
+    def _get_description(self):
+        return "Robocorp framework for Python automations."
 
-        parser = argparse.ArgumentParser(
-            prog="robocorp.tasks",
-            description="Robocorp framework for RPA development using Python.",
-            epilog="View https://github.com/robocorp/robo for more information",
+    def _add_task_argument(self, run_parser):
+        run_parser.add_argument(
+            "-t",
+            "--task",
+            dest="task_name",
+            help="The name of the task that should be run.",
+            action="append",
         )
 
-        subparsers = parser.add_subparsers(dest="command")
+    def _get_argument_parser_class(self):
+        import argparse
 
+        return argparse.ArgumentParser
+
+    def _create_run_parser(self, main_parser):
         # Run
-        run_parser = subparsers.add_parser(
+        run_parser = main_parser.add_parser(
             "run",
-            help="run will collect tasks with the @task decorator and run the first that matches based on the task name filter.",
+            help="Collects tasks with the @task decorator and all tasks that matches based on the task name filter.",
         )
         run_parser.add_argument(
             dest="path",
@@ -52,12 +64,10 @@ class _ArgDispatcher:
             default=".",
         )
         run_parser.add_argument(
-            "-t",
-            "--task",
-            dest="task_name",
-            help="The name of the task that should be run.",
-            action="append",
+            "--glob",
+            help=f"May be used to specify a glob to select from which files tasks should be searched (default '{_constants.DEFAULT_TASK_SEARCH_GLOB}')",
         )
+        self._add_task_argument(run_parser)
         run_parser.add_argument(
             "-o",
             "--output-dir",
@@ -106,6 +116,18 @@ class _ArgDispatcher:
         )
 
         run_parser.add_argument(
+            "--json-input",
+            help="May be used to pass the arguments to the task by loading the arguments from a file (defined as a json object, where keys are the arguments names and the values are the values to be set to the arguments).",
+            dest="json_input",
+        )
+        run_parser.add_argument(
+            "--preload-module",
+            action="append",
+            help="May be used to load a module(s) as the first step when collecting tasks.",
+            dest="preload_module",
+        )
+
+        run_parser.add_argument(
             "--no-status-rc",
             help="When set, if running tasks has an error inside the task the return code of the process is 0.",
             dest="no_status_rc",
@@ -134,8 +156,11 @@ class _ArgDispatcher:
             help="Can be used to do an early os._exit to avoid the tasks session teardown or the interpreter teardown. Not recommended in general.",
         )
 
+        return run_parser
+
+    def _create_list_tasks_parser(self, main_parser):
         # List tasks
-        list_parser = subparsers.add_parser(
+        list_parser = main_parser.add_parser(
             "list",
             help="Provides output to stdout with json contents of the tasks available.",
         )
@@ -145,17 +170,55 @@ class _ArgDispatcher:
             nargs="?",
             default=".",
         )
+        list_parser.add_argument(
+            "--glob",
+            help=(
+                f"May be used to specify a glob to select from which files tasks should be searched (default '{_constants.DEFAULT_TASK_SEARCH_GLOB}')"
+            ),
+        )
 
+        return list_parser
+
+    def _create_argparser(self):
+        cls = self._get_argument_parser_class()
+        parser = cls(
+            prog=_constants.MODULE_ENTRY_POINT,
+            description=self._get_description(),
+            epilog="View https://github.com/robocorp/robo for more information",
+        )
+
+        subparsers = parser.add_subparsers(dest="command")
+        self._create_run_parser(subparsers)
+        self._create_list_tasks_parser(subparsers)
         return parser
 
-    def process_args(self, args: List[str]) -> int:
+    def parse_args(self, args: List[str]):
+        log.debug("Processing args: %s", " ".join(args))
+        additional_args = []
+        new_args = []
+        for i, arg in enumerate(args):
+            if arg == "--":
+                # argparse.REMAINDER is buggy:
+                # https://bugs.python.org/issue17050
+                # So, remove '--' and everything after from what's passed to
+                # argparser.
+                additional_args.extend(args[i + 1 :])
+                break
+            new_args.append(arg)
+
+        parser = self._create_argparser()
+        parsed = parser.parse_args(new_args)
+
+        if additional_args:
+            parsed.additional_arguments = additional_args
+        return parsed
+
+    def process_args(self, args: List[str], pm: Optional[PluginManager] = None) -> int:
         """
         Processes the arguments and return the returncode.
         """
-        log.debug("Processing args: %s", " ".join(args))
-        parser = self._create_argparser()
         try:
-            parsed = parser.parse_args(args)
+            parsed = self.parse_args(args)
         except SystemExit as e:
             code = e.code
             if isinstance(code, int):
@@ -164,7 +227,7 @@ class _ArgDispatcher:
                 return 0
             return int(code)
 
-        return self._dispatch(parsed)
+        return self._dispatch(parsed, pm)
 
 
 arg_dispatch = _ArgDispatcher()

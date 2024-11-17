@@ -25,23 +25,24 @@ Run all the tasks in files named *task*.py:
 Run only tasks with a given name:
 
   `python -m robocorp.tasks run <directory or file> -t <task_name>`
-  
-  
+
+
 Note: Using the `cli.main(args)` is possible to run tasks programmatically, but
 clients using this approach MUST make sure that any code which must be
 automatically logged is not imported prior the the `cli.main` call.
 """
+from functools import wraps
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from ._fixtures import setup, teardown
 from ._protocols import ITask, Status
 
-__version__ = "2.4.0"
+__version__ = "3.1.2"
 version_info = [int(x) for x in __version__.split(".")]
 
 
-def task(func):
+def task(*args, **kwargs):
     """
     Decorator for tasks (entry points) which can be executed by `robocorp.tasks`.
 
@@ -49,13 +50,23 @@ def task(func):
 
     If a file such as tasks.py has the contents below:
 
-    ..
-        from robocorp.tasks import task
+    ```python
+    from robocorp.tasks import task
 
-        @task
-        def enter_user():
-            ...
+    @task
+    def enter_user():
+        ...
+    ```
 
+    It's also possible to pass options to the task decorator that can then be introspected by `task.options`:
+
+    ```python
+    from robocorp.tasks import task
+
+    @task(this_is_option="option")
+    def enter_user():
+        ...
+    ```
 
     It'll be executable by robocorp tasks as:
 
@@ -63,13 +74,25 @@ def task(func):
 
     Args:
         func: A function which is a task to `robocorp.tasks`.
+        **kwargs: Options to be introspected by `task.options`.
     """
-    from . import _hooks
 
-    # When a task is found, register it in the framework as a target for execution.
-    _hooks.on_task_func_found(func)
+    def decorator(func, options: Optional[Dict] = None):
+        from . import _hooks
 
-    return func
+        # When a task is found, register it in the framework as a target for execution.
+        _hooks.on_task_func_found(func, options=options)
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    if args and callable(args[0]):
+        return decorator(args[0], options=kwargs)
+
+    return lambda func: decorator(func, options=kwargs)
 
 
 def session_cache(func):

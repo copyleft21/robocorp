@@ -1,5 +1,143 @@
 # Changelog
 
+## Unreleased
+
+## 3.1.2 - 2024-09-25
+
+- Update dependencies
+
+## 3.1.1 - 2024-04-10
+
+- Fixed some typings which were only valid for Python 3.10.
+
+## 3.1.0 - 2024-04-10
+
+- `python -m robocorp.tasks list` now has information on the managed parameters
+  (`managed_params_schema`, which is a dict from parameter name to parameter
+   information is given for each task).
+   
+## 3.0.3 - 2024-04-09
+
+- Properly added `packaging` as a dependency in production (not just dev-dependency).
+
+## 3.0.2 - 2024-04-08
+
+- Update package's main README.
+
+## 3.0.1 - 2024-03-19
+
+- The truststore SSL patching warning is issued now even when the minimum Python and/or pip versions aren't met.
+- Remove `inject_truststore` from the public API as it was never meant to be imported and used since it is executed
+  automatically already at module import time.
+
+## 3.0.0 - 2024-03-15
+
+- Backward incompatible release: The `robocorp.tasks.cli.IArgumentsHandler` interface
+  was changed (most clients should not have any issues as it should be rare that
+  clients need to provide a custom argument handler).
+- On custom models, the description and title is now properly set based on the docstring and parameter name.
+
+## 2.10.0 - 2024-03-13
+
+- References in the schema are resolved (so, the schema for a field is valid when embedded inside a larger schema).
+
+## 2.9.3 - 2024-03-11
+
+- `pydantic` models are accepted as the input and output of `@task`s. 
+
+## 2.9.2 - 2024-03-06
+
+- Add `inject_truststore` util in `tasks.cli` for reuse in other libraries, then log a warning in case 
+  the injection could not happen due to the missing `robocorp-truststore` dependency.
+
+## 2.9.1 - 2024-01-31
+
+- Internal changes related to handling arguments.
+
+## 2.9.0 - 2024-01-18
+
+- Provides support for calling `main` multiple times.
+    - Modules containing `@task` are no longer reimported anymore.
+    - Any `@task` that was already imported is still available for running in a new `main` call.
+    - `RC_TASKS_SKIP_SESSION_SETUP` env variable may be used to skip setup of new `@setup`s found.
+    - `RC_TASKS_SKIP_SESSION_TEARDOWN` env variable may be used to skip teardon of `@teardown`s found.
+
+## 2.8.1 - 2024-01-14
+
+- Fix main README and update docs.
+
+## 2.8.0 - 2024-01-09
+
+- Arguments to `@task` may be passed in a json file (with `--json-input=<path to .json file>`).
+
+## 2.7.0 - 2024-01-05
+
+- Fixed issue where imports would fail when collecting tasks because the path being used wasn't absolute. 
+- The task may now have associated information passed as `**kwargs` in the task (available in `ITask.options`).
+
+## 2.6.0 - 2023-12-13
+
+- It's now possible to define `--glob` to define which files should be searched for `@task`s.
+    - The default is `*task*.py` (which was hard-coded in previous versions).
+    - `|` can be used to specify multiple glob matches.
+    - The search is always recursive (thus `**/` does not need to be added to the glob as it's redundant).
+    - Example `task.py|my_entry_point.py|*case.py`.
+
+## 2.5.0 - 2023-11-23
+
+- Methods decorated with `@task` now can accept parameters. 
+    - If the parameters have types declared, those are respected (but only str, bool, int and float are accepted).
+    - If the type is not specified, it's considered a string.
+    - Arguments passed to the task must be separated by a `--` and all arguments must be named.
+
+Example:
+
+Given a task such as:
+
+```python
+from robocorp.tasks import task
+
+@task
+def convert_to_int(value:str) -> int:
+    return int(value)
+```
+
+It can be called as:
+
+```python
+python -m robocorp.tasks -- --value=2
+```
+
+- Methods that return a will now have the returned value saved in `task.result`.
+  Note: the result is not directly used anywhere else inside the framework, but it's accessible to other
+  code using `@teardown` in the task level so it can be manipulated (so it could be streamed to
+  disk, some web-server, etc).
+
+- When listing the tasks, the `input_schema` and `output_schema` of the task will be available
+  (as such, if values have arguments or outputs in the type definition, they'll be present according
+  to the schema). Right now the schema only supports `int`, `float`, `str` and `bool`.
+  
+- It's possible to specify modules to be pre-loaded when running tasks (meaning that they'll
+  be imported as the first step before collecting tasks).
+  This enables the usage of `@setup` and `@teardown` in different modules (as `@setup` and
+  `@teardown` need to be in the same module where `@task` is defined to work right now). 
+
+Example:
+
+The command line below will pre-load the module `my_setup` and `my_teardown`
+
+```python
+python -m robocorp.tasks --preload-module=my_setup --preload-module=my_teardown
+```
+
+## 2.4.2 - 2023-11-09
+
+- On early exit with `RC_OS_EXIT`, make sure that the logs are written prior to exiting.
+
+## 2.4.1 - 2023-11-08
+
+- Setting CoInitEx initialization parameters to prevent issue where `asyncio` would fail to shutdown.
+
 ## 2.4.0 - 2023-11-02
 
 - `RC_DUMP_THREADS_AFTER_RUN` may be set to "0" or "false" to prevent threads from being dumped after the teardown

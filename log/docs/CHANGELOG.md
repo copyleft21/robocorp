@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+## 2.9.3 - 2024-09-25
+
+- Update dependencies
+
+## 2.9.2 - 2024-04-08
+
+- Update package's main README.
+
+## 2.9.1 - 2024-03-11
+
+- Fixed issue writing unicode to the output when the contents cannot be encoded with the stdout/stderr encoding.
+
+## 2.9.0 - 2024-01-19
+
+- Added auxiliary function `iter_decoded_log_format_from_log_html_contents` to `robocorp.log` to public API.
+
+## 2.8.1 - 2024-01-14
+
+- Fix main README and update docs.
+- Fix version retrieval during development.
+
 ## 2.8.0 - 2023-10-27
 
 - `log.html`: It's now possible to click icon to show details (so, items without a message are also clickable).

@@ -2,8 +2,6 @@
 
 # module `robocorp.tasks`
 
-**Source:** [`__init__.py:0`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/__init__.py#L0)
-
 Robocorp tasks helps in creating entry points for your automation project.
 
 To use:
@@ -34,15 +32,11 @@ Run only tasks with a given name:
 
 Note: Using the `cli.main(args)` is possible to run tasks programmatically, but clients using this approach MUST make sure that any code which must be automatically logged is not imported prior the the `cli.main` call.
 
+# Functions
+
 ______________________________________________________________________
 
-## function `task`
-
-**Source:** [`__init__.py:44`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/__init__.py#L44)
-
-```python
-task(func)
-```
+## `task`
 
 Decorator for tasks (entry points) which can be executed by `robocorp.tasks`.
 
@@ -50,9 +44,23 @@ i.e.:
 
 If a file such as tasks.py has the contents below:
 
-.. from robocorp.tasks import task
+```python
+from robocorp.tasks import task
 
-@taskdef enter_user():...
+@task
+def enter_user():
+    ...
+```
+
+It's also possible to pass options to the task decorator that can then be introspected by `task.options`:
+
+```python
+from robocorp.tasks import task
+
+@task(this_is_option="option")
+def enter_user():
+    ...
+```
 
 It'll be executable by robocorp tasks as:
 
@@ -61,19 +69,17 @@ python -m robocorp.tasks run tasks.py -t enter_user
 **Args:**
 
 - <b>`func`</b>:  A function which is a task to `robocorp.tasks`.
+- <b>`**kwargs`</b>:  Options to be introspected by `task.options`.
+
+[**Link to source**](https://github.com/robocorp/robocorp/tree/master/tasks/src/robocorp/tasks/__init__.py#L45)
+
+```python
+task(*args, **kwargs)
+```
 
 ______________________________________________________________________
 
-## function `setup`
-
-**Source:** [`_fixtures.py:26`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/_fixtures.py#L26)
-
-```python
-setup(
-    *args,
-    **kwargs
-) → Union[Callable[[ITask], Any], Callable[[Callable[[ITask], Any]], Callable[[ITask], Any]], Callable[[Callable[[Sequence[ITask]], Any]], Callable[[Sequence[ITask]], Any]]]
-```
+## `setup`
 
 Run code before any tasks start, or before each separate task.
 
@@ -125,18 +131,18 @@ def my_long_task():
 
 **Note:** If fixtures are defined in another file, they need to be imported in the main tasks file to be taken into use
 
-______________________________________________________________________
-
-## function `teardown`
-
-**Source:** [`_fixtures.py:148`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/_fixtures.py#L148)
+[**Link to source**](https://github.com/robocorp/robocorp/tree/master/tasks/src/robocorp/tasks/_fixtures.py#L26)
 
 ```python
-teardown(
+setup(
     *args,
     **kwargs
 ) → Union[Callable[[ITask], Any], Callable[[Callable[[ITask], Any]], Callable[[ITask], Any]], Callable[[Callable[[Sequence[ITask]], Any]], Callable[[Sequence[ITask]], Any]]]
 ```
+
+______________________________________________________________________
+
+## `teardown`
 
 Run code after tasks have been run, or after each separate task.
 
@@ -170,15 +176,18 @@ By default, runs teardowns in `task` scope.
 
 **Note:** If fixtures are defined in another file, they need to be imported in the main tasks file to be taken into use
 
-______________________________________________________________________
-
-## function `session_cache`
-
-**Source:** [`__init__.py:75`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/__init__.py#L75)
+[**Link to source**](https://github.com/robocorp/robocorp/tree/master/tasks/src/robocorp/tasks/_fixtures.py#L148)
 
 ```python
-session_cache(func)
+teardown(
+    *args,
+    **kwargs
+) → Union[Callable[[ITask], Any], Callable[[Callable[[ITask], Any]], Callable[[ITask], Any]], Callable[[Callable[[Sequence[ITask]], Any]], Callable[[Sequence[ITask]], Any]]]
 ```
+
+______________________________________________________________________
+
+## `session_cache`
 
 Provides decorator which caches return and clears automatically when all tasks have been run.
 
@@ -190,15 +199,15 @@ The function may be either a generator with a single yield (so, the first yielde
 
 - <b>`func`</b>:  wrapped function.
 
-______________________________________________________________________
-
-## function `task_cache`
-
-**Source:** [`__init__.py:97`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/__init__.py#L97)
+[**Link to source**](https://github.com/robocorp/robocorp/tree/master/tasks/src/robocorp/tasks/__init__.py#L98)
 
 ```python
-task_cache(func)
+session_cache(func)
 ```
+
+______________________________________________________________________
+
+## `task_cache`
 
 Provides decorator which caches return and clears it automatically when the current task has been run.
 
@@ -210,59 +219,123 @@ The function may be either a generator with a single yield (so, the first yielde
 
 - <b>`func`</b>:  wrapped function.
 
+[**Link to source**](https://github.com/robocorp/robocorp/tree/master/tasks/src/robocorp/tasks/__init__.py#L120)
+
+```python
+task_cache(func)
+```
+
 ______________________________________________________________________
 
-## function `get_output_dir`
+## `get_output_dir`
 
-**Source:** [`__init__.py:119`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/__init__.py#L119)
+Provide the output directory being used for the run or None if there's no output dir configured.
+
+[**Link to source**](https://github.com/robocorp/robocorp/tree/master/tasks/src/robocorp/tasks/__init__.py#L142)
 
 ```python
 get_output_dir() → Optional[Path]
 ```
 
-Provide the output directory being used for the run or None if there's no output dir configured.
-
 ______________________________________________________________________
 
-## function `get_current_task`
+## `get_current_task`
 
-**Source:** [`__init__.py:132`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/__init__.py#L132)
+Provides the task which is being currently run or None if not currently running a task.
+
+[**Link to source**](https://github.com/robocorp/robocorp/tree/master/tasks/src/robocorp/tasks/__init__.py#L155)
 
 ```python
 get_current_task() → Optional[ITask]
 ```
 
-Provides the task which is being currently run or None if not currently running a task.
-
 ______________________________________________________________________
 
-## class `ITask`
+# Class `ITask`
 
-**Source:** [`_protocols.py:41`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/_protocols.py#L41)
+## Properties
 
-#### property `failed`
+- `failed`
 
 Returns true if the task failed. (in which case usually exc_info is not None).
 
-#### property `lineno`
+- `input_schema`
 
-#### property `name`
+The input schema from the function signature.
 
-______________________________________________________________________
+**Example:**
 
-### method `run`
-
-**Source:** [`_protocols.py:58`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/_protocols.py#L58)
-
-```python
-run() → None
+```
+{
+    "properties": {
+        "value": {
+            "type": "integer",
+            "description": "Some value.",
+            "title": "Value",
+            "default": 0
+        }
+    },
+    "type": "object"
+}
 ```
 
+- `lineno`
+
+The line where the task is declared.
+
+- `managed_params_schema`
+
+The schema for the managed parameters.
+
+**Example:**
+
+```
+{
+    "my_password": {
+        "type": "Secret"
+    },
+    "request": {
+        "type": "Request"
+    }
+}
+```
+
+- `name`
+
+The name of the task.
+
+- `output_schema`
+
+The output schema based on the function signature.
+
+**Example:**
+
+```
+{
+    "type": "string",
+    "description": ""
+}
+```
+
+## Methods
+
 ______________________________________________________________________
 
-## enum `Status`
+### `run`
 
-**Source:** [`_protocols.py:33`](https://github.com/robocorp/robo/tree/master/tasks/src/robocorp/tasks/_protocols.py#L33)
+Runs the task and returns its result.
+
+[**Link to source**](https://github.com/robocorp/robocorp/tree/master/tasks/src/robocorp/tasks/_protocols.py#L137)
+
+```python
+run() → Any
+```
+
+# Enums
+
+______________________________________________________________________
+
+## `Status`
 
 Task state
 

@@ -1,14 +1,13 @@
 [tool.poetry]
 name = "robocorp-http"
-version = "0.4.0"
-description = "Robocorp HTTP library"
+version = "0.4.3"
+description = "Robocorp HTTP library (deprecated)"
 authors = [
-	"Ossi R. <ossi@robocorp.com>",
 	"Fabio Z. <fabio@robocorp.com>",
-	"Antero V. <antero@robocorp.com>",
+	"Cosmin P. <cosmin@robocorp.com>",
 ]
 readme = "README.md"
-repository = "https://github.com/robocorp/robo/"
+repository = "https://github.com/robocorp/robocorp/"
 license = "Apache-2.0"
 packages = [{include = "robocorp", from="src"}]
 
@@ -21,7 +20,7 @@ profile = "black"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-requests = "^2.31.0"
+requests = "^2.32.3"
 
 [tool.poetry.group.dev.dependencies]
 robocorp-devutils = {path = "../devutils/", develop = true}

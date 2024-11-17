@@ -27,19 +27,23 @@ def ci_credentials() -> str:
 
 @pytest.fixture(scope="session")
 def rcc_loc(tmpdir_factory):
-    tests_rcc_dir = os.path.expanduser("~/.robocorp_tests_rcc")
-    os.makedirs(tests_rcc_dir, exist_ok=True)
+    from devutils._system_mutex_in_tests import timed_acquire_mutex
 
-    # tests_rcc_dir = tmpdir_factory.mktemp("rcc_dir")
+    with timed_acquire_mutex("download_rcc_in_tests"):
+        tests_rcc_dir = os.path.expanduser("~/.robocorp_tests_rcc")
+        os.makedirs(tests_rcc_dir, exist_ok=True)
 
-    location = os.path.join(str(tests_rcc_dir), f"rcc_{RCC_VERSION}")
-    if sys.platform == "win32":
-        location += ".exe"
-    _download_rcc(location, force=False)
-    assert os.path.exists(location)
+        # tests_rcc_dir = tmpdir_factory.mktemp("rcc_dir")
 
-    # Disable tracking for tests
-    subprocess.check_call([location] + "configure identity --do-not-track".split())
+        location = os.path.join(str(tests_rcc_dir), f"rcc-{RCC_VERSION}")
+        if sys.platform == "win32":
+            location += ".exe"
+        _download_rcc(location, force=False)
+        assert os.path.exists(location)
+
+        # Disable tracking for tests
+        subprocess.check_call([location] + "configure identity --do-not-track".split())
+
     return Path(location)
 
 
@@ -84,7 +88,7 @@ def robocorp_home(tmpdir_factory) -> str:
     return str(dirname)
 
 
-RCC_VERSION = "v14.6.0"
+RCC_VERSION = "v17.23.2"
 
 
 def _download_rcc(location: str, force: bool = False) -> None:
@@ -268,12 +272,39 @@ def robocorp_tasks_run(
     additional_env: Optional[Dict[str, str]] = None,
     timeout=None,
 ) -> CompletedProcess:
+    return python_run(
+        ["-m", "robocorp.tasks"] + cmdline, returncode, cwd, additional_env, timeout
+    )
+
+
+def robocorp_actions_run(
+    cmdline,
+    returncode: Union[Literal["error"], Literal["any"], int],
+    cwd=None,
+    additional_env: Optional[Dict[str, str]] = None,
+    timeout=None,
+) -> CompletedProcess:
+    return python_run(
+        ["-m", "robocorp.actions"] + cmdline, returncode, cwd, additional_env, timeout
+    )
+
+
+def python_run(
+    cmdline,
+    returncode: Union[Literal["error"], Literal["any"], int],
+    cwd=None,
+    additional_env: Optional[Dict[str, str]] = None,
+    timeout=None,
+) -> CompletedProcess:
     cp = os.environ.copy()
     cp["PYTHONPATH"] = os.pathsep.join([x for x in sys.path if x])
     if additional_env:
         cp.update(additional_env)
-    args = [sys.executable, "-m", "robocorp.tasks"] + cmdline
+    args = [sys.executable] + cmdline
     result = subprocess.run(args, capture_output=True, env=cp, cwd=cwd, timeout=timeout)
+
+    if returncode == "any":
+        return result
 
     if returncode == "error" and result.returncode:
         return result
@@ -281,7 +312,8 @@ def robocorp_tasks_run(
     if result.returncode == returncode:
         return result
 
-    env_str = "\n".join(str(x) for x in sorted(cp.items()))
+    # This is a bit too verbose, so, commented out for now.
+    # env_str = "\n".join(str(x) for x in sorted(cp.items()))
 
     raise AssertionError(
         f"""Expected returncode: {returncode}. Found: {result.returncode}.
@@ -290,9 +322,6 @@ def robocorp_tasks_run(
 
 === stderr:
 {result.stderr.decode('utf-8')}
-
-=== Env:
-{env_str}
 
 === Args:
 {args}

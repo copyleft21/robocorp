@@ -7,7 +7,7 @@ import pytest
 def test_argparse():
     from robocorp.tasks._argdispatch import arg_dispatch
 
-    parser = arg_dispatch.argparser
+    parser = arg_dispatch._create_argparser()
 
     s = io.StringIO()
     with redirect_stdout(s):
@@ -36,6 +36,23 @@ def test_argparse():
     assert parsed.path == "target_dir"
     assert parsed.max_log_files == 5
     assert parsed.max_log_file_size == "2MB"
+
+    parsed = arg_dispatch.parse_args(
+        [
+            "run",
+            "target_dir",
+            "--max-log-files=5",
+            "--max-log-file-size=2MB",
+            "--",
+            "a=2",
+            "b=3",
+        ]
+    )
+    assert parsed.command == "run"
+    assert parsed.path == "target_dir"
+    assert parsed.max_log_files == 5
+    assert parsed.max_log_file_size == "2MB"
+    assert parsed.additional_arguments == ["a=2", "b=3"]
 
 
 def test_argparse_command_invalid():

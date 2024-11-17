@@ -4,9 +4,12 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 from types import ModuleType
-from typing import Callable, Dict, Iterator, List, Sequence
+from typing import Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple
 
-from robocorp.tasks._protocols import ITask
+from robocorp import log
+
+from ._customization._plugin_manager import PluginManager
+from ._protocols import ITask
 
 
 def module_name_from_path(path: Path, root: Path) -> str:
@@ -78,7 +81,12 @@ def import_path(
     if not path.exists():
         raise ImportError(path)
 
+    path = path.absolute()
+    root = root.absolute()
     module_name = module_name_from_path(path, root)
+    mod = sys.modules.get(module_name)
+    if mod is not None:
+        return mod
 
     for meta_importer in sys.meta_path:
         spec = meta_importer.find_spec(module_name, [str(path.parent)])
@@ -88,10 +96,18 @@ def import_path(
         spec = importlib.util.spec_from_file_location(module_name, str(path))
 
     if spec is None:
-        raise ImportError(f"Can't find module {module_name} at location {path}")
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = mod
-    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+        raise ImportError(
+            f"Can't find module '{module_name}'\n  at location '{path}'\n  (with root: '{root}')."
+        )
+    try:
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = mod
+        spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    except Exception:
+        log.critical(
+            f"Error when importing module '{module_name}'\n  at location '{path}'\n  (with root: '{root}')."
+        )
+        raise
     insert_missing_modules(sys.modules, module_name)
     return mod
 
@@ -112,13 +128,29 @@ def _add_to_sys_path_0(root: Path):
             pass
 
 
-def collect_tasks(path: Path, task_names: Sequence[str] = ()) -> Iterator[ITask]:
+# These are the tasks found. They're kept in a global variable because when
+# doing multiple invocations of the main we want to consider those properly.
+_methods_marked_as_tasks_found: List[Tuple[Callable, Dict]] = []
+_found_as_set: Set[Tuple[str, str]] = set()
+
+
+def clear_previously_collected_tasks():
+    _methods_marked_as_tasks_found.clear()
+    _found_as_set.clear()
+
+
+def collect_tasks(
+    pm: PluginManager,
+    path: Path,
+    task_names: Sequence[str] = (),
+    glob: Optional[str] = None,
+) -> Iterator[ITask]:
     """
     Note: collecting tasks is not thread-safe.
     """
-    from robocorp.tasks import _hooks
-    from robocorp.tasks._task import Task
+    from robocorp.tasks import _constants, _hooks
 
+    path = path.absolute()
     task_names_as_set = set(task_names)
 
     _hooks.before_collect_tasks(path, task_names_as_set)
@@ -129,21 +161,23 @@ def collect_tasks(path: Path, task_names: Sequence[str] = ()) -> Iterator[ITask]
 
         return task.name in task_names
 
-    methods_marked_as_tasks_found: List[Callable] = []
-    found_as_set = set()
-
-    def on_func_found(func):
+    def on_func_found(func, options: Dict):
         from robocorp.tasks._exceptions import RobocorpTasksError
 
         key = (func.__code__.co_name, func.__code__.co_filename)
-        if key in found_as_set:
+        if key in _found_as_set:
             raise RobocorpTasksError(
                 f"Error: a task with the name '{func.__code__.co_name}' was "
                 + f"already found in: {func.__code__.co_filename}."
             )
-        found_as_set.add(key)
+        _found_as_set.add(key)
 
-        methods_marked_as_tasks_found.append(func)
+        _methods_marked_as_tasks_found.append(
+            (
+                func,
+                options,
+            )
+        )
 
     with _hooks.on_task_func_found.register(on_func_found):
         if path.is_dir():
@@ -155,26 +189,29 @@ def collect_tasks(path: Path, task_names: Sequence[str] = ()) -> Iterator[ITask]
                 if package_init.exists():
                     lst.append(package_init)
 
-                for path_with_task in itertools.chain(lst, path.rglob("*task*.py")):
-                    module = import_path(path_with_task, root=root)
+                use_glob = glob or _constants.DEFAULT_TASK_SEARCH_GLOB
 
-                    for method in methods_marked_as_tasks_found:
-                        task = Task(module, method)
-                        if accept_task(task):
-                            yield task
+                # We want to accept '|' in glob.
+                globs = use_glob.split("|")
 
-                    del methods_marked_as_tasks_found[:]
+                # Use dict to make unique keeping order.
+                glob_paths = dict()
+                for g in globs:
+                    for p in path.rglob(g):
+                        glob_paths[p] = 1
+
+                for path_with_task in itertools.chain(lst, tuple(glob_paths.keys())):
+                    if path_with_task.is_dir() or not path_with_task.name.endswith(
+                        ".py"
+                    ):
+                        continue
+
+                    import_path(path_with_task, root=root)
 
         elif path.is_file():
             root = _get_root(path, is_dir=False)
             with _add_to_sys_path_0(root):
-                module = import_path(path, root=root)
-                for method in methods_marked_as_tasks_found:
-                    task = Task(module, method)
-                    if accept_task(task):
-                        yield task
-
-                del methods_marked_as_tasks_found[:]
+                import_path(path, root=root)
 
         else:
             from ._exceptions import RobocorpTasksCollectError
@@ -186,6 +223,17 @@ def collect_tasks(path: Path, task_names: Sequence[str] = ()) -> Iterator[ITask]
                 f"Expected {path} to map to a directory or file."
             )
 
+    from robocorp.tasks._task import Task
+
+    for method, options in _methods_marked_as_tasks_found:
+        module_name = method.__module__
+        module_file = method.__code__.co_filename
+
+        task = Task(pm, module_name, module_file, method, options=options)
+
+        if accept_task(task):
+            yield task
+
 
 def _get_root(path: Path, is_dir: bool) -> Path:
     pythonpath_entries = tuple(Path(p) for p in sys.path)
@@ -195,15 +243,15 @@ def _get_root(path: Path, is_dir: bool) -> Path:
         for p in pythonpath_entries:
             try:
                 if os.path.samefile(p, path):
-                    return p
+                    return p.absolute()
             except OSError:
                 pass
 
         new_path = path.parent
         if not new_path or new_path == path:
             if is_dir:
-                return initial
+                return initial.absolute()
             else:
-                return initial.parent
+                return initial.parent.absolute()
 
         path = new_path

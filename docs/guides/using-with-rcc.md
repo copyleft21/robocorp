@@ -1,4 +1,4 @@
-# Using robo libraries in existing projects
+# Using Robocorp libraries in existing projects
 
 It's possible to use certain features - such as logging - from the `robo` framework in existing [rcc](https://github.com/robocorp/rcc) projects. It can be done by adding a single `pip` dependency and making a few simple changes.
 
@@ -14,7 +14,8 @@ tasks:
   Run Task:
     shell: python task.py
 
-condaConfigFile: conda.yaml
+environmentConfigs:
+  - conda.yaml
 artifactsDir: output
 PATH:
   - .
@@ -91,7 +92,8 @@ This command can be subsituted in the existing `robot.yaml`:
 tasks:
   Run Task:
     shell: python -m robocorp.tasks run task.py
-condaConfigFile: conda.yaml
+environmentConfigs:
+  - conda.yaml
 artifactsDir: output
 PATH:
   - .
@@ -117,4 +119,4 @@ log_filter_rules = [
 ]
 ```
 
-To see more documentation for configuration, see the [README.md](https://github.com/robocorp/robo/blob/master/log/README.md) of the library.
+To see more documentation for configuration, see the [README.md](https://github.com/robocorp/robocorp/blob/master/log/README.md) of the library.

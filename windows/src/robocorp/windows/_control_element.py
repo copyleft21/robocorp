@@ -6,10 +6,9 @@ import re
 import sys
 import typing
 from pathlib import Path
-from typing import Callable, Iterator, List, Literal, Optional, Tuple, Union
+from typing import Callable, Iterator, List, Literal, Optional, Tuple, Union, overload
 
-from _ctypes import COMError
-
+from ._com_error import COMError
 from ._errors import ActionNotPossible, ElementNotFound
 from ._find_ui_automation import LocatorStrAndOrSearchParams
 from .protocols import Locator
@@ -29,6 +28,21 @@ if typing.TYPE_CHECKING:
 PatternType = Union["ValuePattern", "LegacyIAccessiblePattern"]
 
 DEFAULT_SEND_KEYS_INTERVAL = 0.01
+
+
+class _SentinelValidator:
+    # Used to determine the validator function for `ControlElement.set_value` method.
+    #  If a validator is not passed explicitly, then the `set_value_validator` function
+    #  will be used as default.
+
+    def __call__(self, *args, **kwargs):
+        pass
+
+    def __repr__(self):
+        return "_SentinelValidator"
+
+    def __str__(self):
+        return "_SentinelValidator"
 
 
 def set_value_validator(expected: str, actual: str) -> bool:
@@ -431,12 +445,81 @@ class ControlElement:
     def __repr__(self):
         return f"""{self.__class__.__name__}({self.__str__()})"""
 
+    def _raise_or_warn_control_not_found(
+        self,
+        locator: Locator,
+        search_depth: int,
+        timeout: Optional[float],
+        raise_error: bool,  # to raise or not
+        exception: Exception,  # previous original raised exception
+    ):
+        from . import config as windows_config
+
+        config = windows_config()
+        if not config.verbose_errors:
+            # Verbose errors were disabled, so no fancy messages with suggestions will
+            #  be applied.
+            if raise_error:
+                # Just re-raise the same error if raising is ON.
+                raise exception
+            else:
+                # Or log instead without raising.
+                self.logger.warning(exception)
+                return
+
+        # Verbose error message with suggestions.
+        msg = (
+            f"Could not locate control with locator: {locator!r} "
+            f"(timeout: {timeout if timeout is not None else config.timeout})"
+        )
+        if not raise_error:
+            # Verbosity not needed anymore when raising was disabled.
+            self.logger.warning(msg)
+            return
+
+        child_elements_msg = ["\nChild Elements Found:"]
+        for child in self._iter_children_nodes(max_depth=search_depth):
+            child_elements_msg.append(str(child))
+        msg += "\n".join(child_elements_msg)
+        raise ElementNotFound(msg) from exception
+
+    @overload
+    def find(
+        self,
+        locator: Locator,
+        search_depth: int = ...,
+        timeout: Optional[float] = ...,
+        raise_error: Literal[True] = ...,
+    ) -> "ControlElement":
+        ...
+
+    @overload
+    def find(
+        self,
+        locator: Locator,
+        search_depth: int = ...,
+        timeout: Optional[float] = ...,
+        raise_error: Literal[False] = ...,
+    ) -> Optional["ControlElement"]:
+        ...
+
+    @overload
+    def find(
+        self,
+        locator: Locator,
+        search_depth: int = ...,
+        timeout: Optional[float] = ...,
+        raise_error: bool = ...,
+    ) -> Optional["ControlElement"]:
+        ...
+
     def find(
         self,
         locator: Locator,
         search_depth: int = 8,
         timeout: Optional[float] = None,
-    ) -> "ControlElement":
+        raise_error: bool = True,
+    ) -> Optional["ControlElement"]:
         """
         This method may be used to find a control in the descendants of this
         control.
@@ -448,17 +531,17 @@ class ControlElement:
 
             search_depth: Up to which depth the hierarchy should be searched.
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
 
+            raise_error: Do not raise and return `None` when this is set to `True` and such
+                a window isn't found.
+
         Raises:
-            ElementNotFound if an element with the given locator could not be
+            `ElementNotFound` if an element with the given locator could not be
             found.
         """
         if not locator:
@@ -471,24 +554,11 @@ class ControlElement:
                     timeout=timeout,
                 )
             )
-        except ElementNotFound as e:
-            from . import config as windows_config
-
-            config = windows_config()
-            if not config.verbose_errors:
-                raise
-
-            # Verbose error
-            msg = (
-                f"Could not locate control with locator: {locator!r} "
-                f"(timeout: {timeout if timeout is not None else config.timeout})"
+        except ElementNotFound as exc:
+            self._raise_or_warn_control_not_found(
+                locator, search_depth, timeout, raise_error, exception=exc
             )
-            child_elements_msg = ["\nChild Elements Found:"]
-            for w in self._iter_children_nodes(max_depth=search_depth):
-                child_elements_msg.append(str(w))
-
-            msg += "\n".join(child_elements_msg)
-            raise ElementNotFound(msg) from e
+            return None
 
     def find_many(
         self,
@@ -507,24 +577,17 @@ class ControlElement:
 
             search_depth: Up to which depth the tree will be traversed.
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `wait_for_element` is True.
 
-            search_strategy:
-                The search strategy to be used to find elements.
-
+            search_strategy: The search strategy to be used to find elements.
                 `siblings` means that after the first element is found, the tree
                     traversal should be stopped and only sibling elements will be
                     searched.
-
                 `all` means that all the elements up to the given search depth
                     will be searched.
 
@@ -675,7 +738,7 @@ class ControlElement:
             for child in iter_in:
                 print(child, file=stream)
 
-                space = " " * ((child.depth * 4 + 2))
+                space = " " * (child.depth * 4 + 2)
                 control = child.control
                 print(f"{space}Properties:", file=stream)
                 try:
@@ -763,15 +826,11 @@ class ControlElement:
                 used if the `locator` is specified).
             wait_time: The time to wait after clicking the element. If not passed the
                 default value found in the config is used.
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is passed.
 
         Example:
@@ -824,18 +883,17 @@ class ControlElement:
         Args:
             locator: If given the child element which matches this locator will
                 be double-clicked.
+
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
 
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is passed.
+
             wait_time: The time to wait after double-clicking the element. If not
                 passed the default value found in the config is used.
 
@@ -896,15 +954,11 @@ class ControlElement:
                 used if the `locator` is specified).
             wait_time: The time to wait after right-clicking the element. If not
                 passed the default value found in the config is used.
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is passed.
 
         Example:
@@ -963,16 +1017,13 @@ class ControlElement:
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is passed.
+
             wait_time: The time to wait after middle-clicking the element. If not
                 passed the default value found in the config is used.
 
@@ -1090,15 +1141,11 @@ class ControlElement:
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is passed.
 
         Returns:
@@ -1179,15 +1226,11 @@ class ControlElement:
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is passed.
 
             wait_time: The time to wait after sending the keys to the element. If not passed the
@@ -1256,15 +1299,11 @@ class ControlElement:
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is given.
 
         Returns:
@@ -1318,15 +1357,11 @@ class ControlElement:
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is given.
 
         Returns:
@@ -1435,7 +1470,7 @@ class ControlElement:
         enter: bool = False,
         newline: bool = False,
         send_keys_fallback: bool = True,
-        validator: Optional[Callable] = set_value_validator,
+        validator: Optional[Callable] = _SentinelValidator(),
         locator: Optional[Locator] = None,
         search_depth: int = 8,
         timeout: Optional[float] = None,
@@ -1469,15 +1504,11 @@ class ControlElement:
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is given.
 
         Note:
@@ -1539,6 +1570,9 @@ class ControlElement:
         get_value_pattern = self._get_value_pattern(element.ui_automation_control)
         action = "Appending" if append else "Setting"
 
+        if isinstance(validator, _SentinelValidator):
+            validator = set_value_validator
+
         if get_value_pattern:
             self._set_value_with_pattern(
                 value,
@@ -1589,15 +1623,11 @@ class ControlElement:
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is given.
 
         Example:
@@ -1652,15 +1682,11 @@ class ControlElement:
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is given.
 
         Example:
@@ -1710,15 +1736,11 @@ class ControlElement:
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is given.
 
         Returns:
@@ -1774,15 +1796,11 @@ class ControlElement:
             search_depth: Used as the depth to search for the locator (only
                 used if the `locator` is specified).
 
-            timeout:
-                The search for a child with the given locator will be retried
-                until the given timeout elapses.
-
+            timeout: The search for a child with the given locator will be retried
+                until the given timeout (in **seconds**) elapses.
                 At least one full search up to the given depth will always be done
                 and the timeout will only take place afterwards.
-
                 If not given the global config timeout will be used.
-
                 Only used if `locator` is given.
 
         Example:

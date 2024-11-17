@@ -1,125 +1,295 @@
-<a href="https://github.com/robocorp/robo/">
-  <img src="./docs/include/logo.svg" alt="Robo Logo" width="100%">
-</a>
+![Robocorp](./docs/include/robocorp-header.svg)
 
-## Robo is an all-in-one Python automation framework
+<samp>[Docs](https://robocorp.com/docs) | [Blog](https://robocorp.com/blog) | [Examples](https://github.com/robocorp/actions-cookbook) | [ReMark](https://chat.robocorp.com) | [Courses](https://robocorp.com/docs/courses) | [Slack](http://sema4ai-users.slack.com/) | [Youtube](https://www.youtube.com/@Robocorp) | [𝕏](https://twitter.com/RobocorpInc)</samp>
 
-### Create, develop, run, and deploy your automation code with Robo - and operate it all with [Control Room](https://robocorp.com/products/control-room)
+[![PyPI - Version](https://img.shields.io/pypi/v/robocorp?label=robocorp&color=%23733CFF)](https://pypi.org/project/robocorp)
+[![PyPI - Version](https://img.shields.io/pypi/v/robocorp-action-server?label=action-server&color=%23733CFF)](https://pypi.org/project/robocorp-action-server)
+[![Downloads](https://static.pepy.tech/badge/robocorp/month)](https://pepy.tech/project/robocorp)
+[![GitHub issues](https://img.shields.io/github/issues/robocorp/robocorp?color=%232080C0)](https://github.com/robocorp/robocorp/issues)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-<br/>
-<details open="open">
-<summary>Table of Contents</summary>
+# Create, deploy and operate 🐍 Python Automations and AI Actions anywhere.
 
-- [What is Robo?](#what-is-robo)
-- [Libraries](#libraries)
-- [CLI](#cli)
-- [Licence](#licence)
+Robocorp is the easiest way to extend the capabilities of AI agents, assistants and copilots with custom actions, written in Python. Create and deploy tools, skills, loaders and plugins that securely connect any AI Assistant platform to your data and applications.
 
-</details>
+Robocorp Action Server makes your Python scripts compatible with ChatGPT and LangChain by automatically creating and exposing an API based on function declaration, type hints and docstrings. Just add `@action` and start!
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/include/robocorp-flow-dark.webp">
+  <img alt="Text changing depending on mode. Light: 'So light!' Dark: 'So dark!'" src="./docs/include/robocorp-flow-light.webp">
+</picture>
+
+Looking for a replacement to RPA? Head over to our [Enterprise Python Automation site](https://robocorp.com/docs/quickstart-guide) for more.
 
 ---
 
-> **Warning**<br/>
-> Robo CLI is not yet recommended for production use, while libraries are ready for prime time. Refer to Robocorp's production tooling for managing Python projects [here](https://robocorp.com/docs/quickstart-guide/python).
+<div id="quickstart"></div>
 
-## What is Robo?
+# 🏃‍♂️ Quickstart
 
-Robo is both a CLI for managing your Python projects, and a set of libraries for automating your tasks. It handles your entire automation development lifecycle. Robo's key features are:
+There are two main ways using the Action Server: use with our Robocorp Code extension for VS Code, or DIY from the command line. This section gets you going!
 
-- **Isolated environments.** Get started without installing any other tools, not even Python. Robo automatically creates fully isolated environments for projects, which can be reproduced anywhere else.
-- **Batteries included.** Robo ships with a broad set of libraries for automating common tasks, be it browser automation, document processing, or navigating desktop applications.
-- **Reduce boilerplate.** Turn your Python snippet into a runnable automation with minimal effort. Robo can be used to execute your code in other environments, and deployed in Control Room without any infrastructure work.
-- **Troubleshoot easily.** Robo automatically traces your automation task, and create an easy-to-read report of what happened. You can quickly see if something went wrong - and how to fix it.
+<details open>
+<summary><b>Robocorp Code extension for VS Code</b></summary>
 
-Robo is designed to function as a single tool that helps you more easily get things done. It is entirely compatible with the PyPI and Conda ecosystems, but also brings in a set of libraries designed from the ground up to be focused on automation.
+After installing [Robocorp Code extension from the VS Code Markeplace](https://marketplace.visualstudio.com/items?itemName=robocorp.robocorp-code), open the Command Palette (`Command-Shift-P` or `Ctrl-Shift-P`) and select `Robocorp: Create Action Package`. This will bootstrap a new project. You can then run/debug indvidual Actions from the Extension's sidebar, or start the Action Server.
 
-## Getting started
+![github-extension](https://github.com/robocorp/robocorp/assets/40179958/d53000bf-558e-48a7-bb30-4610b9bf24c5)
 
-> **Note**<br/>
-> If you are new to Robocorp, and looking to work on a production-grade project, please start from our official [Quick Start Guide](https://robocorp.com/docs/quickstart-guide).
+</details>
 
-To install Robo, visit our [downloads site](https://downloads.robocorp.com/robo/releases/index.html) to get the latest version.
+<details open>
+<summary><b>CLI For macOS</b></summary>
 
-After downloading, you can create a new project with:
-```bash
-robo new
+```sh
+brew update
+brew install robocorp/tools/action-server
 ```
 
-It will interactively prompt for project name and type, after which it'll create a new environment for the project. This might take a few minutes for the first time, but results are cached and will be quick on later iterations.
+</details>
 
-Looking at the created `tasks.py`, the runnable portions of the project are defined with a `@task` decorator. It tells `robo` that the function implements one specific automation task, which can then later be scheduled to run in [Control Room](https://robocorp.com/products/control-room).
+<details>
+<summary><b>CLI For Windows</b></summary>
 
-```python
-from robocorp.tasks import task
-
-@task
-def hello():
-    print("Hello World!")
+```sh
+# Download Robocorp Action Server
+curl -o action-server.exe https://downloads.robocorp.com/action-server/releases/latest/windows64/action-server.exe
 ```
 
-The above minimum example defines a task, which can then be executed with `robo run`. Once execution is finished, you can view the log generated (by default) to log.html file.
+You can download/move the executable into a folder that is in your `PATH`, or you can [add the folder into PATH](https://www.architectryan.com/2018/03/17/add-to-the-path-on-windows-10/) so that you can call `action-server` wherever you are.
 
-<img src="./docs/include/task-log.png" alt="Task Log Example Screenshot">
+</details>
 
-Check out the [docs page](https://robocorp.com/docs) for more in-depth tutorials, and refer to the [API documentation](docs/README.md) to learn how to use the different libraries. If you have further questions or want to help, join our [Forum](https://forum.robocorp.com/).
+<details>
+<summary><b>CLI For Linux</b></summary>
 
-## Libraries
+```sh
+# Download Robocorp Action Server
+curl -o action-server https://downloads.robocorp.com/action-server/releases/latest/linux64/action-server
+chmod a+x action-server
 
-The framework includes Python libraries for configuring project entrypoints and controlling features such as a logging. The project also provides an extensive selection of libraries for the most common automation tasks, and anything else can be easily done through what is already available in the Python ecosystem.
+# Add to PATH or move to a folder that is in PATH
+sudo mv action-server /usr/local/bin/
+```
 
-### Metapackage
+</details>
+<br/>
 
-The easiest way to get started is to install the [`robocorp`](./meta) metapackage, which includes the core features of the framework, such as logging and Control Room integration:
+Bootstrap a new project from a template. You’ll be prompted for the name of the project:
 
-[![robocorp](https://img.shields.io/pypi/v/robocorp?label=robocorp)](https://pypi.org/project/robocorp/)
+```sh
+action-server new
+```
 
-### Packages
+Navigate to the freshly created project folder and start the server:
 
-It's also possible to install individual components of the project as separate dependencies:
+```sh
+cd my-project
+action-server start --expose
+```
 
-| Name | Release | Description | Metapackage |
-| --- | --- | --- | --- |
-| [`robocorp.tasks`](./tasks) | [![robocorp-tasks](https://img.shields.io/pypi/v/robocorp-tasks?label=robocorp-tasks)](https://pypi.org/project/robocorp-tasks/) | Create entrypoints for your automation project. | ✅ |
-| [`robocorp.log`](./log) | [![robocorp-log](https://img.shields.io/pypi/v/robocorp-log?label=robocorp-log)](https://pypi.org/project/robocorp-log/) | Configure and control the execution log. | ✅ |
-| [`robocorp.vault`](./vault) | [![robocorp-vault](https://img.shields.io/pypi/v/robocorp-vault?label=robocorp-vault)](https://pypi.org/project/robocorp-vault/) | Store secret values in Control Room and access them during the execution. | ✅ |
-| [`robocorp.workitems`](./workitems) | [![robocorp-workitems](https://img.shields.io/pypi/v/robocorp-workitems?label=robocorp-workitems)](https://pypi.org/project/robocorp-workitems/) | Interact with Control Room work items; Read data from previous steps, create output data. | ✅ |
-| [`robocorp.storage`](./storage) | [![robocorp-storage](https://img.shields.io/pypi/v/robocorp-storage?label=robocorp-storage)](https://pypi.org/project/robocorp-storage/) | Store assets in Control Room and manage them during the execution. | ✅ |
-| [`robocorp.browser`](./browser) | [![robocorp-browser](https://img.shields.io/pypi/v/robocorp-browser?label=robocorp-browser)](https://pypi.org/project/robocorp-browser/) | Automate actions in a browser, powered by [Playwright](https://playwright.dev/). | - |
-| [`robocorp.excel`](./excel) | [![robocorp-excel](https://img.shields.io/pypi/v/robocorp-excel?label=robocorp-excel)](https://pypi.org/project/robocorp-excel/) | Read and write Excel files directly, with support for both .xlsx and .xls. | - |
-| [`robocorp.http`](./http) | [![robocorp-http](https://img.shields.io/pypi/v/robocorp-http?label=robocorp-http)](https://pypi.org/project/robocorp-http/) | Download files easily, or make custom HTTP requests. | - |
+👉 You should now have an Action Server running locally at: http://localhost:8080, to open the web UI.
 
-> **Note**<br/>
-> For additional automation capabilities on the Robocorp platform, please refer to the wide array of libraries and keywords available in [RPA Framework](https://robocorp.com/docs/libraries/rpa-framework).
+👉 Using the --expose -flag, you also get a public internet-facing URL (something like _twently-cuddly-dinosaurs.robocorp.link_) and an API key. These are the details that you need to configure your AI Agent.
 
-## CLI
+Head over to [Action Server docs](./action_server/README.md) for more.
 
-> **Warning**<br/>
-> Robo CLI is not yet recommended for production use, while libraries are ready for prime time. Refer to Robocorp's production tooling for managing Python projects [here](https://robocorp.com/docs/quickstart-guide/python).
+---
 
-The `robo` CLI is used to manage and run your projects during development, and it bundles your project for deployment.
+<div id="python-action"></div>
 
-#### `robo new`
+# What makes a Python function an⚡️Action?
 
-Create an entirely new Python project, isolated from the rest of your system. No need to install Python separately or manually manage virtual environments.
+1️⃣ `package.yaml` file that describes the set of Actions your are working on, and defines up your **Python environment and dependencies**:
 
-#### `robo run`
+```yaml
+name: Package name
+description: Action package description
+version: 0.0.1
+documentation: https://github.com/...
 
-Run your defined Python tasks. Robo instruments the running code, and generates a pretty report of what was executed.
+dependencies:
+  conda-forge:
+  - python=3.10.12
+  - pip=23.2.1
+  - robocorp-truststore=0.8.0
+  pypi:
+  - robocorp=1.6.1
+  - robocorp-actions=0.0.7
+  - pytz=2023.3
+```
 
-#### `robo exec`
+<details>
+  <summary>🙋‍♂️ "Why not just pip install...?"</summary>
 
-Easily run an arbitrary command within the isolated environment, such as shell commands or a locally installed application.
+Think of this as an equivalent of the requirements.txt, but much better. 👩‍💻 With `package.yaml` you are not just controlling your PyPI dependencies, you control the complete Python environment, which makes things repeatable and easy.
 
-#### `robo lock`
+👉 You will probably not want run the Actions just on your machine, so by using `package.yaml`:
 
-Generate configuration files compatible with [rcc](https://github.com/robocorp/rcc).
+- You can avoid `Works on my machine` -cases
+- You do not need to manage Python installations on all the machines
+- You can control exactly which version of Python your automation will run on
+  - ..as well as the pip version to avoid dependency resolution changes
+- No need for venv, pyenv, ... tooling and knowledge sharing inside your team.
+- Define dependencies in package.yaml let our tooling do the heavy lifting.
+- You get all the content of [conda-forge](https://prefix.dev/channels/conda-forge) without any extra tooling
 
-#### `robo export`
+> This is courtesy of another open-source project of ours, [RCC](https://github.com/robocorp/rcc).
 
-Package your project as a Control Room compatible bundle, ready for deployment.
+</details>
+<br/>
 
-## License
+2️⃣ [@action decorator](./actions) that determines the **action entry point** and [Type hints and docstring](./actions#describe-your-action) to let AI agents know **what the Action does** in natural language.
 
-Source code licensed under [Apache-2.0](./LICENSE).
+```py
+@action
+def greeting(name: str) -> str:
+    """
+    Greets the user
 
-The End User License Agreement (EULA) for the distributed `robo` binary can be found [here](https://cdn.robocorp.com/legal/Robocorp-EULA-v1.0.pdf).
+    Args:
+        name (str): The user name
+
+    Returns:
+        str: Final user greeting
+    """
+```
+
+---
+
+<div id="connect-gpt"></div>
+
+## Connect with OpenAI GPTs Actions
+
+Once you have started the Action Server with `--expose` flag, you’ll get a URL available to the public, along with the authentication token. The relevant part of the output from the terminal looks like this, of course with your own details:
+
+```sh
+...
+Uvicorn running on http://localhost:8080 (Press CTRL+C to quit)
+🌍 URL: https://seventy-six-helpless-dragonflies.robocorp.link
+🔑 Add following header api authorization header to run actions: { "Authorization": "Bearer xxx_xxx" }
+```
+
+<h3 id="actions-video" align="center">
+  <a href="https://www.youtube.com/watch?v=7aq6QDCaUmA">
+    👉 Example video in Youtube 👈
+  </a>
+</h3>
+
+Adding the Action Server-hosted AI Action to your custom GPT is super simple: basically just navigate to “Actions” section of the GPT configuration, add the link to import the actions, and **Add Authentication** with **Authentication method** set to _“API key”_ and **Auth Type** to _“Bearer”_.
+
+> **TIP:**  
+> Use the `@action(is_consequential=False)` flag to avoid the user needing to accept the action execution separately each time on your GPT.
+
+<div id="langchain"></div>
+
+## Add Action Server as a Toolkit to [🦜️🔗 LangChain](https://github.com/robocorp/langchain)
+
+Robocorp Action Server has everything needed to connect it to your Langchain AI app project. The easiest way is to start with the template provided in the Langchain project. Here’s how to do it:
+
+```sh
+# Install LangChain cli tool if not already there
+pip install langchain-cli
+
+# Create a new LangChain app using Action Server template
+langchain app new my-awesome-app --package robocorp-action-server
+```
+
+Then define the route inside the created `./my-awesome-app/app/server.py` file:
+
+```diff
+from langserve import add_routes
++ from robocorp_action_server import agent_executor as action_server_chain
+
+# Edit this to add the chain you want to add
+- add_routes(app, NotImplemented)
++ add_routes(app, action_server_chain, path="/robocorp-action-server")
+```
+
+After the setup make sure you have:
+
+- An environment variable `OPENAI_API_KEY` with your OpenAI API key set
+- You have a running Action Server at http://localhost:8080
+
+Finally, inside the project directory `./my-awesome-app` spin up a LangServe instance directly by:
+
+```sh
+langchain serve
+```
+
+After running the steps above, you’ll have a Playground available at http://127.0.0.1:8000/robocorp-action-server/playground/ where you can test your Actions with an AI agent.
+
+**Want to build your own thing?** Adding your Robocorp AI Actions to a Langchain project is as easy as the code below. Just remember to change the URL of the Action Server if you are not running both the Action Server and Langchain app on the same machine.
+
+```py
+from langchain_robocorp import ActionServerToolkit
+
+# Initialize Action Server Toolkit
+toolkit = ActionServerToolkit(url="http://localhost:8080")
+tools = toolkit.get_tools()
+```
+
+---
+
+<div id="why-actions"></div>
+
+## Why use Robocorp AI Actions
+
+- ❤️ “when it comes to automation, the Robocorp suite is the best one” _[/u/disturbing_nickname](https://old.reddit.com/r/rpa/comments/18qqspn/codeonly_rpa_pet_project/kez2jds/?context=3)_
+- ❤️ “Robocorp seems to be a good player in this domain” _[/u/thankred](https://old.reddit.com/r/rpa/comments/18r5gne/recommendation_for_open_source_or_somewhat_less/kez6aw6/?context=3)_
+- ❤️ “Since you know Python, check out Robocorp. Their product is crazy good.” _[/u/Uomis](https://old.reddit.com/r/rpa/comments/18n5sah/c/ke8qz2g?context=3)_
+
+Robocorp stack is hands down the easiest way to give AI agents more capabilities. It’s an end-to-end stack supporting every type of connection between AI and your apps and data. You are in control where to run the code and everything is built for easiness, security, and scalability.
+
+- 🔐 **Decouple AI and Actions that touches your data/apps** - Clarity and security with segregation of duties between your AI agent and code that touches your data and apps. Build `@action` and use from multiple AI frameworks.
+- 🏎️ **Develop Actions faster with `robocorp` automation libraries** - Robocorp libraries and the Python ecosystem lets you act on anything - from data to API to Browser to Desktops.
+- 🕵️ **Observability out of the box** - Log and trace every `@action` run automatically without a single `print` statement. _Pro tip: connect [LangSmith](https://www.langchain.com/langsmith) traces with Action logs!_
+- 🤯 **No-pain Python environment management** - Don't do [this](https://xkcd.com/1987/). Robocorp manages a full Python environment for your actions with ease.
+- 🚀 **Deploy with zero config and infra** - One step deployment, and you'll be connecting your `@action` to AI apps like Langchain and OpenAI GPTs in seconds.
+
+<div id="inspiration"></div>
+
+## Inspiration
+
+Check out these example projects for inspiration.
+
+- 🐣 [Simplest possible AI Action](https://github.com/robocorp/actions-cookbook/tree/master/greeter)
+- 🤡 [Get a random joke or jokes per theme. Showcases how easy it is to work with APIs.](https://github.com/robocorp/actions-cookbook/tree/master/api-jokes)
+- 🕸️ [Open a local Playwright browser and make some Google searches.](https://github.com/robocorp/actions-cookbook/tree/master/browser-google)
+- 🖥️ [Securely fetch contents of `.txt` and `.pdf` files from your local machine's folder in real time.](https://github.com/robocorp/actions-cookbook/tree/master/desktop-files)
+
+Build more `@actions` and be awesome! We'd love to hear and see what have you built. Join our [Slack community](http://sema4ai-users.slack.com/) to share your work, or post it in the [Discussions](https://github.com/robocorp/robocorp/discussions/categories/show-and-tell). We'll soon start showcasing the best from the community here!
+
+<div id="roadmap"></div>
+
+## Roadmap
+
+- [x] ~~Action Server `brew install` for Mac users~~
+- [x] ~~Expose actions to public URL~~
+- [x] ~~Resume previously exposed session~~
+- [x] ~~Run and debug `@actions` like `@tasks` with [Robocorp VS Code Extension](https://marketplace.visualstudio.com/items?itemName=robocorp.robocorp-code)~~
+- [x] ~~Support JSON/Dicts for inputs and outputs~~
+- [ ] Docstring to OpenAPI specs improvements [#236](https://github.com/robocorp/robocorp/issues/236), [#250](https://github.com/robocorp/robocorp/issues/250)
+- [ ] Action can access request headers [#167](https://github.com/robocorp/robocorp/issues/167)
+- [ ] MS Copilot Studio manifest file support
+- [ ] Action Gallery for prebuilt actions
+- [ ] Llamaindex Tools support
+- [ ] Link and deploy Action Servers to [Control Room](https://cloud.robocorp.com/)
+- [ ] Hot reload of actions after a change
+- [ ] Explicit action user approval
+- [ ] Stateful actions
+
+<div id="contribute"></div>
+
+## Contributing and issues
+
+> ⭐️ First, please star the repo - your support is highly appreciated!
+
+- 🚩 Issues – our [GitHub Issues](https://github.com/robocorp/robocorp/issues) is kept up to date with bugs, improvements, and feature requests
+- 🙋 Help - you are welcome to [join our Community Slack](http://sema4ai-users.slack.com/) if you experience any difficulty getting setup
+- 🌟 Contribution and recognition – Start [here](https://github.com/robocorp/robocorp/blob/master/CONTRIBUTING.md), [PR's](https://github.com/robocorp/robocorp/pulls) are welcome!
+- 🔐 Refer to our [Security policy](https://robocorp.com/.well-known/security.txt) for details
+
+### Contributors
+
+![Contributors](https://contrib.nn.ci/api?repo=robocorp/robocorp)
